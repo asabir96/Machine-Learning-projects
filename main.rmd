@@ -1,0 +1,395 @@
+---
+title: "DA5030 Final Project"
+output: html_notebook
+author: Adil Sabir
+---
+
+
+#Download and explore data
+```{r}
+CervicalCancerOG<- read.csv("risk_factors_cervical_cancer.csv")
+str(CervicalCancerOG)
+```
+
+#cleaning the data
+```{r}
+#select only columns which seem to be of significance from the data set
+library(dplyr)
+CervicalCancer<- CervicalCancerOG %>%
+  select(Age, Number.of.sexual.partners, First.sexual.intercourse,
+  Num.of.pregnancies, Smokes, Smokes..years., Hormonal.Contraceptives, Hormonal.Contraceptives..years.,
+  IUD, IUD..years., STDs, STDs..number., STDs..Number.of.diagnosis, Hinselmann, Schiller, Citology, Biopsy)
+
+#replace column names
+names(CervicalCancer) <- c("age", "Number of Sexual Partners", "Age of first Sexual Intercourse", "Num of Pregnancies", "Smoker?", "Num years smoked?", "Packs/yr", "Use Hormonal Contraceptives?", "Num Years used Hormonal Contraceptives", "IUD?","Num years has had IUD", "Has STD?", "Num years has had STD", "Hinselmann", "Schiller", "Citology", "Biopsy")
+
+#Show preview of new concentrated dataset
+CervicalCancer
+
+```
+
+```{r}
+# use dummy code to count number of healthy and 
+CervicalCancer$Biopsy = factor(CervicalCancer$Biopsy, levels = c(1, 0), labels=c('Cancer', 'Healthy'))
+table(CervicalCancer$Biopsy)
+```
+
+
+```{r}
+#Change the "?" to "N/a" so the data is easier to work with
+CervicalCancer[CervicalCancer == "?"] <- " "
+
+#create data set omitting N/a's all NA's name cervicalcancer2
+CervicalCancer2<- (na.omit(CervicalCancer))
+CervicalCancer
+CervicalCancer2
+#Once the NA's have been omitted, the dataset is reduced from 858 counts to 668 which is still large enough to work with
+
+#Turn NA omitted dataset into numeric values
+CervicalCancer2[] <- lapply(CervicalCancer2, function(x) {
+    if(is.factor(x)) as.numeric(as.character(x)) else x
+})
+```
+```{r}
+#From here on, we will use the CervicalCancer2 data without NA's as it will give us the most accurate result without making assumptions
+#table after NA's ommitted
+table(CervicalCancer2$Biopsy)
+```
+
+
+
+```{r}
+#Turn all factors from previous, NA omitted dataset into integers so we can compute them as numerical values
+as.numeric.factor<- function(x){ as.numeric((levels(x))[x])
+}
+library("varhandle")
+CervicalCancerInt = unfactor(CervicalCancer2)
+CervicalCancerInt$`Number of Sexual Partners` = as.numeric(CervicalCancerInt$`Number of Sexual Partners`)
+CervicalCancerInt$`Age of first Sexual Intercourse` = as.numeric(CervicalCancerInt$`Number of Sexual Partners`)
+CervicalCancerInt$`Num of Pregnancies` = as.numeric(CervicalCancerInt$`Num of Pregnancies`)
+CervicalCancerInt$`Smoker?` = as.numeric(CervicalCancerInt$`Smoker?`)
+CervicalCancerInt$`Num years smoked?` = as.numeric(CervicalCancerInt$`Num years smoked?`)
+CervicalCancerInt$`Packs/yr` = as.numeric(CervicalCancerInt$`Packs/yr`)
+CervicalCancerInt$`Use Hormonal Contraceptives?` = as.numeric(CervicalCancerInt$`Use Hormonal Contraceptives?`)
+CervicalCancerInt$`Num Years used Hormonal Contraceptives` = as.numeric(CervicalCancerInt$`Num Years used Hormonal Contraceptives`)
+CervicalCancerInt$`IUD?` = as.numeric(CervicalCancerInt$`IUD?`)
+CervicalCancerInt$`Num years has had IUD` = as.numeric(CervicalCancerInt$`Num years has had IUD`)
+CervicalCancerInt$`Has STD?` = as.numeric(CervicalCancerInt$`Num years has had STD`)
+CervicalCancerInt$Biopsy = as.numeric(CervicalCancerInt$Biopsy)
+
+CervicalCancerInt
+
+#test that it worked
+str(CervicalCancerInt)
+```
+#Now we can compute the values as numbers
+
+```{r}
+#exploratory plot to show distribution
+#helps to decide whether to use mean, median, or mode to impute NA values
+CervicalCancerInt[] <- lapply(CervicalCancerInt, function(x) {
+    if(is.factor(x)) as.numeric(as.character(x)) else x
+})
+sapply(CervicalCancerInt, class)
+plot(CervicalCancerInt)
+#histogram of just "target variables"
+hist(CervicalCancerInt$Hinselmann)
+hist(CervicalCancerInt$Schiller)
+hist(CervicalCancerInt$Citology)
+hist(CervicalCancerInt$Biopsy)
+```
+#data is skewed to the left so we can use the median for the most accurate value for imputation for NA's
+```{r}
+#get medians for each column 
+MedAge<- median(CervicalCancer2$age)
+
+MedPartners<-median(as.integer(CervicalCancer2$`Number of Sexual Partners`))
+
+MedAgeOfFirstSexualIntercourse<- median(as.integer(as.character(CervicalCancer2$`Age of first Sexual Intercourse`)))
+
+MedNumPregnancies<- median(as.integer(CervicalCancer2$`Num of Pregnancies`))
+
+MedSmokers<- median(as.numeric(as.character(CervicalCancer2$`Smoker?`)))
+
+MedYearsSmoked<- median(as.integer(as.character(CervicalCancer2$`Num years smoked?`)))
+
+MedPacksPerYr<- median(as.integer(CervicalCancer2$`Packs/yr`))
+
+MedHormonalContraception<- median(as.integer(CervicalCancer2$`Use Hormonal Contraceptives?`))
+
+MedYearsHormonalContraception<- median(as.integer(CervicalCancer2$`Num Years used Hormonal Contraceptives`))
+
+MedIUD<- median(as.integer(CervicalCancer2$`IUD?`))
+
+MedYearsWithIUD<- median(as.integer(CervicalCancer2$`Num years has had IUD`))
+
+MedSTD<- median(as.integer(CervicalCancer2$`Has STD?`))
+
+MedYearsWithSTD<- median(as.integer(CervicalCancer2$`Num years has had STD`))
+```
+
+#Imputation
+```{r}
+#Impute N/a Values from Original Data set with medians calculated from above
+#using the median will skew the data the least since the orginal data was shifted to the left
+#if the mean or mode had been used instead of the median, the data would be slightly more skewed and we would be making assumptions on the data for NA values
+
+library(Hmisc)
+#create new data set
+CervicalCancerImpute<- CervicalCancer
+ 
+#impute values
+CervicalCancerImpute$`Number of Sexual Partners`<- impute(CervicalCancer$`Number of Sexual Partners`, MedPartners)
+
+CervicalCancerImpute$`Age of first Sexual Intercourse`<- impute(CervicalCancer$`Age of first Sexual Intercourse`, MedAgeOfFirstSexualIntercourse)
+
+CervicalCancerImpute$`Num of Pregnancies`<- impute(CervicalCancer$`Num of Pregnancies`, MedNumPregnancies)
+
+CervicalCancerImpute$`Smoker?`<- impute(CervicalCancer$`Smoker?`, MedSmokers)
+
+CervicalCancerImpute$`Num years smoked?`<-impute(CervicalCancer$`Num years smoked?`, MedYearsSmoked)
+
+CervicalCancerImpute$`Packs/yr`<- impute(CervicalCancer$`Packs/yr`, MedPacksPerYr)
+
+CervicalCancerImpute$`Use Hormonal Contraceptives?`<- impute(CervicalCancer$`Use Hormonal Contraceptives?`, MedHormonalContraception)
+
+CervicalCancerImpute$`Num Years used Hormonal Contraceptives`<- impute(CervicalCancer$`Num Years used Hormonal Contraceptives`, MedYearsHormonalContraception)
+
+CervicalCancerImpute$`IUD?`<- impute(CervicalCancer$`IUD?`, MedIUD)
+
+CervicalCancerImpute$`Num years has had IUD`<- impute(CervicalCancer$`Num years has had IUD`, MedYearsWithIUD)
+
+CervicalCancerImpute$`Has STD?`<- impute(CervicalCancer$`Has STD?`, MedSTD)
+
+CervicalCancerImpute$`Num years has had STD`<- impute(CervicalCancer$`Num years has had STD`, MedYearsWithSTD)
+
+
+
+#CervicalCancer$Biopsy<- as.numeric(impute(CervicalCancer$Biopsy, MeanBiopsy))
+
+#print new dataset without N/A's (Imputed dataset)
+CervicalCancerImpute<- cbind(CervicalCancerImpute, CervicalCancer[14:17])
+CervicalCancerImpute
+```
+
+```{r}
+#normalize data original unimputed
+Normalize<- function() {
+  return((x-mean(x)/ sd(x)))
+  } #write function for normalizing data
+
+#new normalized dataframe
+#we do not have to normalize the target variables since they are in factors of 1 and 0 (yes / no)
+CervicalCancerNorm<- as.data.frame(lapply(CervicalCancerInt[1:13], scale))
+CervicalCancerNorm<- cbind(CervicalCancerNorm,CervicalCancerInt$Hinselmann, CervicalCancerInt$Schiller, CervicalCancerInt$Citology, CervicalCancer2$Biopsy) 
+head(CervicalCancerNorm)
+```
+
+```{r}
+#check if normalization is correct
+hist(CervicalCancerNorm$age)
+hist(CervicalCancer2$age)
+hist(CervicalCancerNorm$`CervicalCancerInt$Hinselmann`)
+
+summary(CervicalCancerNorm)
+```
+
+```{r}
+#explore normalized data
+hist(CervicalCancerNorm$Number.of.Sexual.Partners)
+hist(CervicalCancerNorm$Age.of.first.Sexual.Intercourse)
+hist(CervicalCancerNorm$Num.of.Pregnancies)
+hist(CervicalCancerNorm$`CervicalCancerInt$Citology`)
+#histograms show data is still skewed left with a few outliers
+```
+```{r}
+#detect outliers
+boxplot(CervicalCancerNorm)
+#very few outliers that will not have much of an effect of the data if they are left as is so removing them is not essential to the model
+#two outliers, one in # of partners, one in age of first sexual intercourse, will not have much effect on the data
+#since the target variables are all factors (0 and 1) there are no outliers so we will not remove them in this case
+```
+#Use PCA to verify the categories (columns) chosen have some significance
+```{r}
+#PCA to validate data
+PCA <- prcomp(CervicalCancerNorm, center = TRUE,scale. = TRUE)
+PCA
+```
+```{r}
+#after doing PCA we can see that most of the variation lies within the first, second, and third PC's in the categories of the target variables which are the 3 tests and the biopsy result
+#these target variables are important because they are most indicative of the biopsy result being "healthy" or "cancer" according to the PCA data 
+#we can create a new data frame with only these target variables only for further analysis later
+CervicalCancerTarget = (CervicalCancerInt$Hinselmann + CervicalCancerInt$Schiller + CervicalCancerInt$Citology + CervicalCancerInt$Biopsy) #preserve the target variables as factors since we are only dealing with 0's and 1's
+#it is advantageous to combine the target variables because if one test indicates there is cancer but the other 3 do not, then it is less compelling than if all 4 tests say there is cancer
+CervicalCancerTarget<- as.factor(CervicalCancerTarget)
+summary(CervicalCancerTarget)
+
+plot(CervicalCancerTarget, ylim = c(0,650))
+```
+```{r}
+#see how many individuals have cancer
+prop.table(table(CervicalCancerTarget))
+```
+#87% of individuals in this dataset do NOT have cancer. 87% accuracy will serve as the baseline for the following models we build. Any value of close to 87% will indicate the model is accurate
+
+#detect any collinearity or correlations among the data
+```{r}
+#create a numerical variable for biopsy using dummy code
+CervicalCancer1<- CervicalCancerOG %>%
+  select(Age, Number.of.sexual.partners, First.sexual.intercourse,
+         Num.of.pregnancies, Smokes, Smokes..years., Hormonal.Contraceptives, Hormonal.Contraceptives..years.,
+         IUD, IUD..years., STDs, STDs..number., STDs..Number.of.diagnosis, Biopsy)
+names(CervicalCancer1) <- c("age", "Number of Sexual Partners", "Age of first Sexual Intercourse", "Num of Pregnancies", "Smoker?", "Num years smoked?", "Packs/yr", "Use Hormonal Contraceptives?", "Num Years used Hormonal Contraceptives", "IUD?","Num years has had IUD", "Has STD?", "Num years has had STD", "Biopsy")
+CervicalCancer1
+CervicalCancer1[CervicalCancer1 == "?"] <- " "
+CervicalCancer11<- (na.omit(CervicalCancer1))
+CervicalCancer11$Biopsy = as.numeric(CervicalCancer11$Biopsy)
+#class(CervicalCancer11$Biopsy)
+CervicalCancerNormCor<- cbind(CervicalCancerNorm[-14], CervicalCancer11$Biopsy)
+
+#correlations
+cor(CervicalCancerNormCor)
+#view numerical correlations among the data
+```
+```{r}
+#visualize correlation
+pairs(CervicalCancerNormCor)
+```
+```{r}
+library(tidyverse)
+library(psych)
+pairs.panels(CervicalCancerNormCor)
+```
+#from analyzing and visualizing collinearity and correlations, we can see there is some collinearity among the categories in the data, however none of the factors were correlated with the biposy result. This means that no one factor or category had an effect on the end biopsy result (cancer or healthy) which means that the variables are independant of the result and only a combination of factors could have resulted in cancer, not one alone.
+
+#more importantly, we should look at the correlation among the target variables as these variables are most indicative of biopsy result, according to PCA
+```{r}
+#Correlation for target variables
+CervicalCancerTargetDF<- CervicalCancerInt[14:17]
+CervicalCancerTargetDF
+cor(CervicalCancerTargetDF)
+#here we can see that unlike the previous variables, the some of the target variables are strongly correlated which indicates some dependence on each other
+```
+```{r}
+#visualization for target variable correlation
+library(psych)
+pairs.panels(CervicalCancerTargetDF)
+```
+
+#from here on we are going to focus on only the target variables because we have justified with PCA and correlation tests that these variables will be most significant for the biopsy result
+#split the data of only target variables
+```{r}
+set.seed(123)
+#split the data 75/25 traditional split
+CervCancerSample <- CervicalCancerTargetDF[sample(1:nrow(CervicalCancerTargetDF)),]
+Train<- CervicalCancerTargetDF[1:501,]
+Test<- CervicalCancerTargetDF[502:668,]
+train_labels <- CervicalCancerTargetDF[1:501, 1]
+test_labels <- CervicalCancerTargetDF[502:668, 1]
+#see if proportions are similar to ensure the split is accurate
+prop.table(table(Train$Biopsy))
+prop.table(table(Test$Biopsy))
+```
+
+#modeling and evaluating the data
+
+#Using KNN to model data
+```{r}
+#use KNN through class and caret package
+library(class)
+library(caret)
+test_pred <- knn(train = Train, test = Test,cl = train_labels, k=35)
+summary(test_pred)
+```
+#KNN predicts that 3 patients of the 167 cases will have cancer while 164 will not
+```{r}
+#evaluate accuracy of model using cross table
+library(gmodels)
+CrossTable(x= test_labels, y= test_pred, prop.chisq = FALSE)
+```
+```{r}
+((3+163)/167)
+```
+There are 167 total observations. 3 observations are true positives, 1 is false negative, 0 are false positives, and 163 are true negatives. The model is 99% accurate! This is extremely high ((TP+TN)/Total observations)
+
+#Tuning the model to improve accuracy and performance 
+```{r}
+#tune model by adjusting K value from 35 in previous example to 10
+test_pred <- knn(train = Train, test = Test,cl = train_labels, k=10)
+summary(test_pred)
+```
+#This new KNN predicts that 4 patients of the 167 cases will have cancer while 163 will not
+```{r}
+#evaluate accuracy of new model using cross table
+CrossTable(x= test_labels, y= test_pred, prop.chisq = FALSE)
+```
+#This model is 100% accurate!
+
+
+#Using Decision Trees to Model data
+```{r}
+set.seed(123)
+Cervcancer_sample <- CervicalCancerInt[sample(1:nrow(CervicalCancerInt)),]
+Cervcancer_train <- Cervcancer_sample[1:668, ]
+Cervcancer_test  <- Cervcancer_sample[502:668, ]
+
+library(C50)
+cancer_modelC50 <- C5.0(Cervcancer_train, CervicalCancerTarget)
+cancer_modelC50
+
+summary(cancer_modelC50)
+```
+#The decision tree algorithm tells us that the error rate for this model is 12.9%. This means that the decision tree model is 87.1% accurate which is quite good
+
+#Evaluate accuracy of the model
+```{r}
+#Evaluating the accuracy of the model by crosstable function
+Cervcancer_predC50 <- predict(cancer_modelC50, Cervcancer_test)
+library(gmodels)
+CrossTable(Test$Biopsy, Cervcancer_predC50,
+           prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE,
+           dnn = c('actual default', 'predicted default'))
+```
+According to the crosstable, there are 167 total observations from the test data and it is predicted that 154 out of the 167 are healthy, while 13 have cancer. 92.2% are healthy vs 7.8% have cancer.
+
+#Improve accuracy of the model(tune)
+```{r}
+#we can try to improve the accuracy by boosting with a trial number of 10
+library(C50)
+cancer_modelC50 <- C5.0(Cervcancer_train, CervicalCancerTarget, trials = 10)
+cancer_modelC50
+
+summary(cancer_modelC50)
+```
+#here we can see the after boosting with 10 trials, the accuracy of the model remains at 87.1% so boosting and increasing trial numbers will not necessarily improve accuracy for this model.
+
+
+#Build mutliple regression model on target data
+```{r}
+#use naive baynes function from e1071 package
+MRegressionModel<- lm(Biopsy ~ Hinselmann + Schiller + Citology, data=CervicalCancerTargetDF)
+#get the summary to see which variables are most significant on the Biposy result
+summary(MRegressionModel)
+```
+#We can see the all the P-values are less than .05 so all the target variables are significant for the biposy result, therefore, we do not have to exclude any of the variables abd can use this model itself
+
+#Our measure of accuracy lies within the Multiple R-squared and the R square value which are both around 55% as well as the Residual Standard error which is 17%. It is not uncommon to have a lower Multiple R-squared so the Multiple R-squared of 54% is not particularly bad, and a RSE of 17% is not terribly high, however has potential to be improved
+
+#tune the model
+```{r}
+#we can attempt to tune this model by adding interaction effects
+#As aforementioned, if one of the tests(target variables) indicated that the patient has cancer, but the other tests do not, then the individual probably doesn't have cancer. However, if all three tests indicate cancer, then the individual is at much higher risk for cancer. Therefore, we can combine these tests as interactions to see if that will improve the model
+MRegressionModel2<- lm(Biopsy ~ Hinselmann*Schiller*Citology + Hinselmann*Schiller + Hinselmann*Citology + Schiller*Citology, data=CervicalCancerTargetDF)
+summary(MRegressionModel2)
+```
+#After adding interaction effects between variables, we were able to increase the Multiple R-squared slightly to 56% and decrease the RSE to 16.6%, a slight improvement over the previous model.
+
+#Comparison of original and improved regression models
+```{r}
+anova(MRegressionModel, MRegressionModel2, test= "Chisq")
+#shows improvement in accuracy and reduced error in second model
+```
+#Comparison of original and improved regression models
+```{r}
+anova(MRegressionModel, cancer_modelC50)
+```
